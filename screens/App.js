@@ -13,28 +13,48 @@ const App = () => {
   const [playingTrack, setPlayingTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   useEffect(() => {
-    const fetchMP3Files = async () => {
-      if (await getPermissions()) {
-        try {
-          const files = await RNFS.readDir(
-            RNFS.ExternalStorageDirectoryPath + '/Sounds',
-          );
-          const mp3Files = files.filter(
-            file => file.isFile() && file.name.endsWith('.mp3'),
-          );
-          setTracks(
-            mp3Files.map((file, index) => ({
-              id: index + 1,
-              title: file.name,
-              url: 'file://' + file.path,
-            })),
-          );
-        } catch (e) {
-          console.error(e.message, e.code);
+    const fetchAudioFiles = async () => {
+      try {
+        if (await getPermissions()) {
+          const directories = [
+            `${RNFS.ExternalStorageDirectoryPath}/Sounds`,
+            `${RNFS.ExternalStorageDirectoryPath}/DCIM/Camera`,
+            `${RNFS.ExternalStorageDirectoryPath}/Music`,
+            `${RNFS.ExternalStorageDirectoryPath}/Download`,
+            `${RNFS.ExternalStorageDirectoryPath}/Bluetooth`,
+          ];
+
+          let audioFiles = [];
+          let idCounter = 0;
+
+          for (const dir of directories) {
+            if (await RNFS.exists(dir)) {
+              const files = await RNFS.readDir(dir);
+              const filteredFiles = files
+                .filter(
+                  file =>
+                    file.isFile() &&
+                    (file.name.endsWith('.mp3') ||
+                      file.name.endsWith('.mp4') ||
+                      file.name.endsWith('.wav')),
+                )
+                .map(file => ({
+                  id: idCounter++,
+                  title: file.name,
+                  url: `${file.path}`,
+                }));
+
+              audioFiles = [...audioFiles, ...filteredFiles];
+            }
+          }
+
+          setTracks(audioFiles);
         }
+      } catch (error) {
+        console.error('Error reading files:', error);
       }
     };
-    fetchMP3Files();
+    fetchAudioFiles();
   }, []);
 
   const playTrack = async track => {
